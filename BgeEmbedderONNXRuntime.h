@@ -12,6 +12,11 @@
 
 class BgeEmbedderONNXRuntime {
 public:
+    BgeEmbedderONNXRuntime(
+        const std::string &modelPath,
+        int intraThreads,
+        int interThreads
+    );
     [[nodiscard]] std::vector<std::vector<float>> run(const BgeTokenizerSentencePiece::Encoded &encoded) const;
 
 private:
@@ -23,8 +28,10 @@ private:
         const std::vector<int64_t> &attention_mask
     ) const;
 
-    const float epsilon_{1e-9f}; // TODO: use this epsilon in meanPool()
-    std::shared_ptr<Ort::Session> embedder_;
+    const float epsilon_{1e-9f};
+    Ort::Env env_;
+    Ort::SessionOptions sessionOptions_;
+    std::unique_ptr<Ort::Session> embedder_;
 };
 
 #endif //BGEEMBEDDERONNXRUNTIME_H

@@ -4,7 +4,24 @@
 
 #include "BgeEmbedderONNXRuntime.h"
 
-std::vector<std::vector<float>> BgeEmbedderONNXRuntime::run(const BgeTokenizerSentencePiece::Encoded &encoded) const {
+BgeEmbedderONNXRuntime::BgeEmbedderONNXRuntime(
+    const std::string &modelPath,
+    int intraThreads,
+    int interThreads
+): env_(ORT_LOGGING_LEVEL_WARNING, "BgeEmbedderONNXRuntime") {
+    sessionOptions_.SetIntraOpNumThreads(intraThreads);
+    sessionOptions_.SetInterOpNumThreads(interThreads);
+    sessionOptions_.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
+
+    embedder_ = std::make_unique<Ort::Session>(
+        env_,
+        modelPath.c_str(),
+        sessionOptions_
+    );
+}
+
+
+std::vector<std::vector<float> > BgeEmbedderONNXRuntime::run(const BgeTokenizerSentencePiece::Encoded &encoded) const {
     // Prepare ONNX tensors
     const int64_t &batch = encoded.shape[0];
     const int64_t &seq = encoded.shape[1];
@@ -28,8 +45,8 @@ std::vector<std::vector<float>> BgeEmbedderONNXRuntime::run(const BgeTokenizerSe
         inputShape.size()
     );
 
-    const std::array<const char*, 2> inputNames{"input_ids", "attn_mask"};
-    const std::array<const char*, 2> outputNames{"last_hidden_state"};
+    const std::array<const char *, 2> inputNames{"input_ids", "attn_mask"};
+    const std::array<const char *, 2> outputNames{"last_hidden_state"};
     std::array<Ort::Value, 2> inputs{std::move(inputIdsTensor), std::move(attnMaskTensor)};
 
     std::vector<Ort::Value> outputs = embedder_->Run(
