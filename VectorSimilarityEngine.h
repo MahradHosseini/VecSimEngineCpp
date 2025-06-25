@@ -19,6 +19,8 @@ public:
     VectorSimilarityEngine(
         // TODO: Tokenizer and Embedder should be internally initialized
         // TODO: skillPool should be passed by ref
+        // TODO: remove epsilon
+        // TODO: remove meanPool()
         std::vector<std::string> skillPool,
         std::shared_ptr<BgeTokenizerSentencePiece> tokenizer,
         std::shared_ptr<Ort::Session> embedder,
@@ -33,15 +35,6 @@ private:
     static float dotProduct(const std::vector<float> &a, const std::vector<float> &b);
 
     static float l2Norm(const std::vector<float> &v);
-
-    static std::vector<std::vector<float> > meanPool(
-        const float *lastHiddenState,
-        int64_t batch,
-        int64_t seq,
-        int64_t hid,
-        const std::vector<int64_t> &attention_mask,
-        float epsilon
-    );
 
     // Multiple texts embedder
     [[nodiscard]] std::vector<std::vector<float> > getEmbeddings(const std::vector<std::string> &texts) const;

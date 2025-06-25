@@ -66,37 +66,6 @@ float VectorSimilarityEngine::l2Norm(const std::vector<float> &v) {
     return std::sqrt(dotProduct(v, v));
 }
 
-std::vector<std::vector<float> > VectorSimilarityEngine::meanPool(
-    const float *lastHiddenState,
-    const int64_t batch,
-    const int64_t seq,
-    const int64_t hid,
-    const std::vector<int64_t> &attention_mask,
-    const float epsilon
-) {
-    std::vector pooled(batch, std::vector<float>(hid, 0.0f));
-    const float *base = lastHiddenState;
-    for (int64_t b = 0; b < batch; ++b) {
-        const int64_t bOffset = b * seq * hid;
-        float maskSum = 0.0f;
-
-        for (int64_t s = 0; s < seq; ++s) {
-            const int64_t mask = attention_mask[b * seq + s];
-            if (!mask) continue;
-            maskSum += static_cast<float>(mask);
-            const float *tokenVec = base + bOffset + s * hid;
-            for (int64_t h = 0; h < hid; ++h) {
-                pooled[b][h] += tokenVec[h];
-            }
-        }
-
-        // Normalize
-        float denom = (maskSum > 0.0f) ? maskSum : epsilon;
-        for (float &v: pooled[b]) v /= denom;
-    }
-    return pooled;
-}
-
 std::vector<std::vector<float> > VectorSimilarityEngine::getEmbeddings(const std::vector<std::string> &texts) const {
     // Tokenize
     BgeTokenizerSentencePiece::Encoded enc = tokenizer_->encode(texts, true, true);
@@ -106,8 +75,8 @@ std::vector<std::vector<float> > VectorSimilarityEngine::getEmbeddings(const std
 
     // Prepare ONNX tensors
     // TODO: check if it's needed to load memInfo every time
-    Ort::MemoryInfo memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    std::array<int64_t, 2> inputShape{batch, seq};
+    const Ort::MemoryInfo memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    const std::array inputShape{batch, seq};
     Ort::Value inputIdsTensor = Ort::Value::CreateTensor<int64_t>(memInfo, enc.input_ids.data(),
                                                                   enc.input_ids.size(), inputShape.data(), 2);
     Ort::Value attnMaskTensor = Ort::Value::CreateTensor<int64_t>(memInfo, enc.attention_mask.data(),
@@ -127,7 +96,8 @@ std::vector<std::vector<float> > VectorSimilarityEngine::getEmbeddings(const std
     const int64_t hid = outShape[2];
 
     // Mean pooling
-    return meanPool(outData, batch, seq, hid, enc.attention_mask, epsilon_);
+    // return meanPool(outData, batch, seq, hid, enc.attention_mask, epsilon_);
+    return std::vector<std::vector<float> >{{0.00}};
 }
 
 std::vector<float> VectorSimilarityEngine::getEmbedding(const std::string &text) const {

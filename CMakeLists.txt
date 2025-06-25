@@ -13,7 +13,9 @@ add_executable(VecSimEngine main.cpp
         VectorSimilarityEngine.h
         VectorSimilarityEngine.cpp
         Tests.cpp
-        Tests.h)
+        Tests.h
+        BgeEmbedderONNXRuntime.h
+        BgeEmbedderONNXRuntime.cpp)
 
 target_include_directories(VecSimEngine PRIVATE /opt/homebrew/Cellar/onnxruntime/1.22.0/include/onnxruntime)
 target_include_directories(VecSimEngine PRIVATE /opt/homebrew/Cellar/sentencepiece/0.2.0/include)
