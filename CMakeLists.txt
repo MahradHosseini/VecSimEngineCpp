@@ -7,7 +7,13 @@ project(VecSimEngine LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 # list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew")
-add_executable(VecSimEngine main.cpp)
+add_executable(VecSimEngine main.cpp
+        BgeTokenizerSentencePiece.h
+        BgeTokenizerSentencePiece.cpp
+        VectorSimilarityEngine.h
+        VectorSimilarityEngine.cpp
+        Tests.cpp
+        Tests.h)
 
 target_include_directories(VecSimEngine PRIVATE /opt/homebrew/Cellar/onnxruntime/1.22.0/include/onnxruntime)
 target_include_directories(VecSimEngine PRIVATE /opt/homebrew/Cellar/sentencepiece/0.2.0/include)
