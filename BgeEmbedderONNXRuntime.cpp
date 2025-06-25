@@ -45,18 +45,24 @@ std::vector<std::vector<float> > BgeEmbedderONNXRuntime::run(const BgeTokenizerS
         inputShape.size()
     );
 
-    const std::array<const char *, 2> inputNames{"input_ids", "attn_mask"};
-    const std::array<const char *, 2> outputNames{"last_hidden_state"};
-    std::array<Ort::Value, 2> inputs{std::move(inputIdsTensor), std::move(attnMaskTensor)};
+    const std::vector<std::string> inputNamesStr  = embedder_->GetInputNames();
+    const std::vector<std::string> outputNamesStr = embedder_->GetOutputNames();
 
+    std::vector<const char*> inputNames, outputNames;
+    inputNames.reserve(inputNamesStr.size());
+    outputNames.reserve(outputNamesStr.size());
+    for (const std::string& s : inputNamesStr)  inputNames.push_back(s.c_str());
+    for (const std::string& s : outputNamesStr) outputNames.push_back(s.c_str());
+
+    std::vector<Ort::Value> inputs;
+    inputs.emplace_back(std::move(inputIdsTensor));
+    inputs.emplace_back(std::move(attnMaskTensor));
+
+    Ort::RunOptions runOpts{nullptr};
     std::vector<Ort::Value> outputs = embedder_->Run(
-        Ort::RunOptions{nullptr},
-        inputNames.data(),
-        inputs.data(),
-        inputNames.size(),
-        outputNames.data(),
-        outputNames.size()
-    );
+                     runOpts,
+                     inputNames.data(),  inputs.data(),  inputNames.size(),
+                     outputNames.data(), outputNames.size());
 
     const float *outData = outputs[0].GetTensorMutableData<float>();
     const std::vector<int64_t> &outShape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();

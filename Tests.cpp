@@ -4,7 +4,10 @@
 
 #include <chrono>
 #include <iostream>
+#include <cassert>
 #include "Tests.h"
+
+#include "BgeEmbedderONNXRuntime.h"
 #include "BgeTokenizerSentencePiece.h"
 
 // Testing BgeTokenizerSentencePiece
@@ -62,4 +65,45 @@ int TestBgeTokenizerSentencePiece(
     std::cout << "Time Elapsed: " << ms << " ms\n";
 
     return 0;
+}
+
+int TestBgeEmbedderONNXRuntime(const std::string &onnxFile, const std::string &tokenizerFile) {
+    try {
+        BgeTokenizerSentencePiece tokenizer(tokenizerFile);
+        BgeEmbedderONNXRuntime embedder(onnxFile, 1, 1);
+        const std::vector<std::string> texts = {
+            "ChatGPT is amazing.",
+            "OpenAI builds artificial intelligence."
+        };
+        BgeTokenizerSentencePiece::Encoded encoded = tokenizer.encode(texts, true, true);
+
+        std::vector<std::vector<float>> emb1 = embedder.run(encoded);
+        std::vector<std::vector<float>> emb2 = embedder.run(encoded);
+
+        assert(emb1.size() == texts.size() && "Batch size mismatch");
+        assert(!emb1.empty() && !emb2.empty() && "Empty output");
+
+        const std::size_t hid = emb1.front().size();
+        assert(hid > 0 && "Hidden size is zero");
+
+        for (const std::vector<float> &vec : emb1) {
+            assert(vec.size() == hid && "Inconsistent hidden size");
+            for (float v : vec) {
+                assert(std::isfinite(v) && "NaN/Inf in embedding");
+            }
+        }
+
+        constexpr float eps = 1e-5f;
+        for (std::size_t b = 0; b < emb1.size(); ++b)
+            for (std::size_t h = 0; h < hid; ++h)
+                assert(std::fabs(emb1[b][h] - emb2[b][h]) < eps &&
+                       "Non-deterministic output for identical input");
+
+        std::cout << "[OK] BgeEmbedderONNXRuntime test passed.\n";
+        return 0;
+    }
+    catch (const std::exception &e) {
+        std::cerr << "[FAIL] Exception: " << e.what() << '\n';
+        return 1;
+    }
 }

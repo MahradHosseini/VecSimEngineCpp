@@ -13,4 +13,9 @@ int TestBgeTokenizerSentencePiece(
     std::size_t N = 100
     );
 
+int TestBgeEmbedderONNXRuntime(
+    const std::string &onnxFile,
+    const std::string &tokenizerFile
+    );
+
 #endif //TESTS_H
