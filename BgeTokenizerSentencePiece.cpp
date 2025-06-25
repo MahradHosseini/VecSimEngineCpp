@@ -7,6 +7,7 @@ BgeTokenizerSentencePiece::BgeTokenizerSentencePiece(
     const std::string &modelFile,
     const std::size_t maxSeqLen
 ) : maxSeqLen_(maxSeqLen) {
+    // TODO: download the file from HF
     if (const sentencepiece::util::Status status = spm_.Load(modelFile); !status.ok()) {
         throw std::runtime_error("BgeTokenizerSentencePiece: cannot load model: " + status.ToString());
     }

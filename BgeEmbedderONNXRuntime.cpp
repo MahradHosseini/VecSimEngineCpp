@@ -13,6 +13,7 @@ BgeEmbedderONNXRuntime::BgeEmbedderONNXRuntime(
     sessionOptions_.SetInterOpNumThreads(interThreads);
     sessionOptions_.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
 
+    // TODO: Download the model from HF
     embedder_ = std::make_unique<Ort::Session>(
         env_,
         modelPath.c_str(),
