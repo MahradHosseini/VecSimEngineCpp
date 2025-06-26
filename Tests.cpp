@@ -4,11 +4,15 @@
 
 #include <chrono>
 #include <iostream>
-#include <cassert>
+#include <regex>
+
 #include "Tests.h"
+
+#include <fstream>
 
 #include "BgeEmbedderONNXRuntime.h"
 #include "BgeTokenizerSentencePiece.h"
+#include "VectorSimilarityEngine.h"
 
 // Testing BgeTokenizerSentencePiece
 int TestBgeTokenizerSentencePiece(
@@ -67,6 +71,8 @@ int TestBgeTokenizerSentencePiece(
     return 0;
 }
 
+// ----------------------------------------------------------------------------------------------------------------
+
 int TestBgeEmbedderONNXRuntime(
     const std::string &onnxFile,
     const std::string &tokenizerFile,
@@ -112,12 +118,114 @@ int TestBgeEmbedderONNXRuntime(
             std::cout << "]\n";
         }
         */
-        std::chrono::time_point<std::chrono::steady_clock> t1 = clock::now();
-        long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-        std::cout << "Time Elapsed: " << ms << " ms\n";
-        return 0;
     } catch (const std::exception &e) {
-        std::cerr << "[FAIL] Exception: " << e.what() << '\n';
+        std::cerr << "Error: " << e.what() << '\n';
         return 1;
     }
+
+    std::chrono::time_point<std::chrono::steady_clock> t1 = clock::now();
+    long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+    std::cout << "Time Elapsed: " << ms << " ms\n";
+    return 0;
+}
+
+// ----------------------------------------------------------------------------------------------------------------
+
+static Chat parseChatLine(const std::string &line) {
+    Chat chat;
+
+    static const std::regex messageRe(R"MSG(\{"role"\s*:\s*"([^"]+)"\s*,\s*"text"\s*:\s*"([^"]*)"\})MSG");
+
+    for (std::sregex_iterator it = std::sregex_iterator(line.begin(), line.end(), messageRe);
+        it != std::sregex_iterator(); ++it) {
+            chat.messages.push_back({(*it)[1].str(), (*it)[2].str()});
+    }
+
+    static const std::regex skillsBlockRe(R"SKILLS("skills"\s*:\s*\[([^\]]*)\])SKILLS");
+
+    std::smatch skillsMatch;
+    if (std::regex_search(line, skillsMatch, skillsBlockRe)) {
+        std::string inner = skillsMatch[1].str();
+        static const std::regex skillRe(R"SKILL("([^\"]+)")SKILL");
+        for (std::sregex_iterator it = std::sregex_iterator(inner.begin(), inner.end(), skillRe);
+            it != std::sregex_iterator(); ++it) {
+            chat.skills.push_back((*it)[1].str());
+        }
+    }
+    return chat;
+}
+
+void printChats(const std::vector<Chat> &chats) {
+    std::cout << "Loaded " << chats.size() << " chat(s).\n\n";
+    for (std::size_t i = 0; i < chats.size(); ++i) {
+        const Chat &c = chats[i];
+        std::cout << "Chat #" << (i + 1) << std::endl;
+        std::cout << " Messages: " << c.messages.size() << std::endl;
+        for (const Message &m : c.messages) {
+            std::cout << "   [" << m.role << "] " << m.text << std::endl;
+        }
+        std::cout << "  Skills: ";
+        for (std::size_t k = 0; k < c.skills.size(); ++k) {
+            std::cout << c.skills[k] << (k + 1 == c.skills.size() ? "" : ", ");
+        }
+        std::cout << std::endl << std::endl;
+    }
+}
+
+int TestVectorSimilarityEngine(
+    const std::string &tokenizerFile,
+    const std::string &embedderFile,
+    const std::string &chatsFile
+    ) {
+    using clock = std::chrono::high_resolution_clock;
+    std::chrono::time_point<std::chrono::steady_clock> t0 = clock::now();
+
+    const std::vector<std::string> skillPool = {
+        "General Database Issues",
+        "AI System Related Issues",
+        "Operating System Related Issues",
+        "Application Software Related Issues",
+        "Network Issues",
+        "Hardware Malfunctions",
+        "Billing Issues",
+        "Payment Issues",
+        "Subscription Issues",
+        "Staff Issues",
+        "Legal Issues"
+    };
+
+    std::ifstream file(chatsFile);
+    if (!file) {
+        std::cerr << "Cannot open " << chatsFile << '\n';
+        return 1;
+    }
+
+    std::string line;
+    std::vector<Chat> chats;
+    std::size_t lineNo = 0;
+
+    while (std::getline(file, line)) {
+        ++lineNo;
+        try {
+            chats.push_back(parseChatLine(line));
+        }catch (const std::exception &e) {
+            std::cerr << "Error: " << e.what() << '\n';
+            return 1;
+        }
+    }
+
+    printChats(chats);
+
+    try {
+        VectorSimilarityEngine engine(skillPool, tokenizerFile, embedderFile);
+
+    }catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << '\n';
+        return 1;
+    }
+
+    std::chrono::time_point<std::chrono::steady_clock> t1 = clock::now();
+    long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+    std::cout << "Time Elapsed: " << ms << " ms\n";
+    return 0;
 }

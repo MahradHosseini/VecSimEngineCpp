@@ -7,28 +7,22 @@
 #define VECTORSIMILARITYENGINE_H
 
 #include <vector>
-#include "BgeTokenizerSentencePiece.h"
 #include <onnxruntime_cxx_api.h>
+#include "BgeTokenizerSentencePiece.h"
+#include "BgeEmbedderONNXRuntime.h"
 
 class VectorSimilarityEngine {
 public:
-    // `skillPool`: the list of known skills must match the order of embeddings in SKILL_POOL.
-    // `tokenizer`: shared tokenizer instance (HuggingFace tokenizers‑cpp, sentencepiece, etc.).
-    // `embedder`: ONNX Runtime session loaded with a feature‑extraction model that returns "last_hidden_state".
-    // `epsilon`: small value to avoid division by zero.
-    VectorSimilarityEngine(
-        // TODO: Tokenizer and Embedder should be internally initialized
-        // TODO: skillPool should be passed by ref
-        // TODO: remove epsilon
-        // TODO: remove meanPool()
-        std::vector<std::string> skillPool,
-        std::shared_ptr<BgeTokenizerSentencePiece> tokenizer,
-        std::shared_ptr<Ort::Session> embedder,
-        float epsilon = 1e-9f
-    );
+    typedef std::pair<std::string, float> SkillAndScore;
+    typedef std::vector<SkillAndScore> SkillAndScoreVector;
 
-    // TODO: make the return type a data structure
-    [[nodiscard]] std::pair<std::vector<std::string>, std::vector<float>> getTopSkills(
+    VectorSimilarityEngine(
+        const std::vector<std::string>& skillPool,
+        const std::string &tokenizerFilePath,
+        const std::string &embedderFilePath
+        );
+
+    [[nodiscard]] SkillAndScoreVector getTopSkills(
         const std::string &chat, std::size_t k = 5) const;
 
 private:
@@ -44,11 +38,11 @@ private:
 
     // Members
     std::shared_ptr<BgeTokenizerSentencePiece> tokenizer_;
-    std::shared_ptr<Ort::Session> embedder_;
+    std::shared_ptr<BgeEmbedderONNXRuntime> embedder_;
     std::vector<std::string> skillPool_;
     std::vector<std::vector<float> > skillsEmbeddings_;
     std::vector<float> skillNorms_;
-    float epsilon_;
+    const float epsilon_{1e-9f};
 };
 
 #endif //VECTORSIMILARITYENGINE_H
