@@ -4,11 +4,13 @@
 
 #include "BgeEmbedderONNXRuntime.h"
 
+#include <iostream>
+
 BgeEmbedderONNXRuntime::BgeEmbedderONNXRuntime(
     const std::string &modelPath,
     int intraThreads,
     int interThreads
-): env_(ORT_LOGGING_LEVEL_WARNING, "BgeEmbedderONNXRuntime") {
+): env_(ORT_LOGGING_LEVEL_ERROR, "BgeEmbedderONNXRuntime") {
     sessionOptions_.SetIntraOpNumThreads(intraThreads);
     sessionOptions_.SetInterOpNumThreads(interThreads);
     sessionOptions_.SetGraphOptimizationLevel(ORT_ENABLE_ALL);

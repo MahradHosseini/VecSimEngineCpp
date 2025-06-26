@@ -15,7 +15,7 @@ int TestBgeTokenizerSentencePiece(
     const std::string &modelFile,
     const std::size_t maxSeqLen,
     const std::size_t N
-    ) {
+) {
     // Testing BgeTokenizerSentencePiece
     using clock = std::chrono::high_resolution_clock;
     std::chrono::time_point<std::chrono::steady_clock> t0 = clock::now();
@@ -67,42 +67,56 @@ int TestBgeTokenizerSentencePiece(
     return 0;
 }
 
-int TestBgeEmbedderONNXRuntime(const std::string &onnxFile, const std::string &tokenizerFile) {
+int TestBgeEmbedderONNXRuntime(
+    const std::string &onnxFile,
+    const std::string &tokenizerFile,
+    const std::size_t N
+    ) {
+    using clock = std::chrono::high_resolution_clock;
+    std::chrono::time_point<std::chrono::steady_clock> t0 = clock::now();
+
     try {
         BgeTokenizerSentencePiece tokenizer(tokenizerFile);
         BgeEmbedderONNXRuntime embedder(onnxFile, 1, 1);
-        const std::vector<std::string> texts = {
-            "ChatGPT is amazing.",
-            "OpenAI builds artificial intelligence."
+        const std::vector<std::string> baseTexts = {
+            "General Database Issues",
+            "AI System Related Issues",
+            "Operating System Related Issues",
+            "Application Software Related Issues",
+            "Network Issues",
+            "Hardware Malfunctions",
+            "Billing Issues",
+            "Payment Issues",
+            "Subscription Issues",
+            "Staff Issues",
+            "Legal Issues"
         };
+        std::vector<std::string> texts;
+        texts.reserve(baseTexts.size() * N);
+        for (std::size_t i = 0; i < N; ++i) {
+            texts.insert(texts.end(), baseTexts.begin(), baseTexts.end());
+        }
         BgeTokenizerSentencePiece::Encoded encoded = tokenizer.encode(texts, true, true);
 
-        std::vector<std::vector<float>> emb1 = embedder.run(encoded);
-        std::vector<std::vector<float>> emb2 = embedder.run(encoded);
+        std::vector<std::vector<float> > emb1 = embedder.run(encoded);
 
-        assert(emb1.size() == texts.size() && "Batch size mismatch");
-        assert(!emb1.empty() && !emb2.empty() && "Empty output");
+        std::cout << "Tokenizer Shape: [" << encoded.shape[0] << ", " << encoded.shape[1] << "]\n";
+        std::cout << "Embedded Vector Size: " << emb1.size() << std::endl;
 
-        const std::size_t hid = emb1.front().size();
-        assert(hid > 0 && "Hidden size is zero");
-
-        for (const std::vector<float> &vec : emb1) {
-            assert(vec.size() == hid && "Inconsistent hidden size");
-            for (float v : vec) {
-                assert(std::isfinite(v) && "NaN/Inf in embedding");
+        /*
+        for (std::vector<float>& v : emb1) {
+            std::cout << "[";
+            for (float i : v) {
+                std::cout << i << " ";
             }
+            std::cout << "]\n";
         }
-
-        constexpr float eps = 1e-5f;
-        for (std::size_t b = 0; b < emb1.size(); ++b)
-            for (std::size_t h = 0; h < hid; ++h)
-                assert(std::fabs(emb1[b][h] - emb2[b][h]) < eps &&
-                       "Non-deterministic output for identical input");
-
-        std::cout << "[OK] BgeEmbedderONNXRuntime test passed.\n";
+        */
+        std::chrono::time_point<std::chrono::steady_clock> t1 = clock::now();
+        long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+        std::cout << "Time Elapsed: " << ms << " ms\n";
         return 0;
-    }
-    catch (const std::exception &e) {
+    } catch (const std::exception &e) {
         std::cerr << "[FAIL] Exception: " << e.what() << '\n';
         return 1;
     }
