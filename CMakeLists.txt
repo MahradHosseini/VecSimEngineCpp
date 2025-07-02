@@ -5,7 +5,7 @@ set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 
 project(VecSimEngine LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 add_executable(VecSimEngine main.cpp
         BgeTokenizerSentencePiece.h
         BgeTokenizerSentencePiece.cpp

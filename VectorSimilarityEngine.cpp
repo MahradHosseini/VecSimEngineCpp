@@ -6,41 +6,37 @@
 #include "VectorSimilarityEngine.h"
 
 VectorSimilarityEngine::VectorSimilarityEngine(
-    const std::vector<std::string>& skillPool,
     const std::string &tokenizerFilePath,
     const std::string &embedderFilePath
 ): tokenizer_(std::make_shared<BgeTokenizerSentencePiece>(tokenizerFilePath, 512)),
-   embedder_(std::make_shared<BgeEmbedderONNXRuntime>(embedderFilePath, 1, 1)),
-   skillPool_(skillPool) {
-    skillsEmbeddings_ = getEmbeddings(skillPool_);
-    skillNorms_.reserve(skillsEmbeddings_.size());
-    for (const std::vector<float> &row: skillsEmbeddings_) {
-        skillNorms_.push_back(l2Norm(row));
-    }
-}
+   embedder_(std::make_shared<BgeEmbedderONNXRuntime>(embedderFilePath, 1, 1)){}
 
 VectorSimilarityEngine::SkillAndScoreVector VectorSimilarityEngine::getTopSkills(
-    const std::string &chat, const std::size_t k) const {
+    const std::string &chat,
+    const std::vector<std::string> &skillsPool,
+    const std::vector<std::vector<float>> &skillsEmbeddings,
+    const std::vector<float> &skillsNorms,
+    const std::size_t k) const {
     const std::vector<float> chatVec = getEmbedding(chat);
     const float chatNorm = l2Norm(chatVec);
 
     // Cosine Similarity against every skill
-    const std::size_t numSkills = skillsEmbeddings_.size();
+    const std::size_t numSkills = skillsPool.size();
     std::vector<float> sims(numSkills);
     for (std::size_t i = 0; i < numSkills; ++i) {
-        float dot = dotProduct(skillsEmbeddings_[i], chatVec);
-        sims[i] = dot / ((skillNorms_[i] * chatNorm) + epsilon_);
+        float dot = dotProduct(skillsEmbeddings[i], chatVec);
+        sims[i] = dot / ((skillsNorms[i] * chatNorm) + epsilon_);
     }
 
     std::vector<std::size_t> idx(numSkills);
     std::iota(idx.begin(), idx.end(), 0);
     if (k < numSkills) {
-        std::ranges::partial_sort(idx, idx.begin() + k, [&sims](std::size_t a, std::size_t b) {
+        std::partial_sort(idx.begin(), idx.begin() + k, idx.end(), [&sims](std::size_t a, std::size_t b) {
             return sims[a] > sims[b];
         });
         idx.resize(k);
     } else {
-        std::ranges::sort(idx, [&sims](std::size_t a, std::size_t b) {
+        std::sort(idx.begin(), idx.end(), [&sims](std::size_t a, std::size_t b) {
             return sims[a] > sims[b];
         });
     }
@@ -49,7 +45,7 @@ VectorSimilarityEngine::SkillAndScoreVector VectorSimilarityEngine::getTopSkills
     std::vector<float> topScores;
     SkillAndScoreVector tops;
     for (std::size_t i: idx) {
-        tops.emplace_back(skillPool_[i], sims[i]);
+        tops.emplace_back(skillsPool[i], sims[i]);
     }
     return tops;
 }
@@ -78,4 +74,14 @@ std::vector<std::vector<float> > VectorSimilarityEngine::getEmbeddings(const std
 std::vector<float> VectorSimilarityEngine::getEmbedding(const std::string &text) const {
     std::vector<std::vector<float> > res = getEmbeddings({text});
     return res.front();
+}
+
+std::vector<float> VectorSimilarityEngine::getNorms(const std::vector<std::vector<float>> &embeddings) const {
+    std::vector<float> norms;
+    norms.reserve(embeddings.size());
+
+    for (const std::vector<float> &row: embeddings) {
+        norms.push_back(l2Norm(row));
+    }
+    return norms;
 }

@@ -221,7 +221,10 @@ int TestVectorSimilarityEngine(
     int64_t total{0};
 
     try {
-        VectorSimilarityEngine engine(skillPool, tokenizerFile, embedderFile);
+        VectorSimilarityEngine engine(tokenizerFile, embedderFile);
+        std::vector<std::vector<float>> skillsEmbeddings = engine.getEmbeddings(skillPool);
+        std::vector<float> skillsNorms = engine.getNorms(skillsEmbeddings);
+
 
         for (std::size_t i = 0; i < chats.size(); ++i) {
             std::cout << "\r" << "Processing chat " << (i + 1) << "/" << chats.size() << std::flush;
@@ -232,7 +235,7 @@ int TestVectorSimilarityEngine(
                 cStr += "\n" + m.text;
             }
             // std::cout << "   Chat string: " << cStr << std::endl;
-            VectorSimilarityEngine::SkillAndScoreVector tops = engine.getTopSkills(cStr, skillSize);
+            VectorSimilarityEngine::SkillAndScoreVector tops = engine.getTopSkills(cStr, skillPool, skillsEmbeddings, skillsNorms, skillSize);
             for (std::size_t k = 0; k < tops.size(); ++k) {
                 for (std::string &s: c.skills) {
                     if (tops[k].first == s) {
